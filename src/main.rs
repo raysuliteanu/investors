@@ -6,6 +6,7 @@ use std::{
 
 use clap::{Args, Parser, Subcommand};
 use investors::av::AV;
+use log::debug;
 
 #[derive(Debug, Parser)]
 struct Cli {
@@ -21,13 +22,15 @@ struct Cli {
 
 #[derive(Debug, Subcommand)]
 enum Commands {
+    /// get a stock quote
     Quote(QuoteArgs),
 }
 
 #[derive(Debug, Args, Default)]
 struct QuoteArgs {
+    /// stock ticker symbol
     #[arg(name = "symbol")]
-    symbol: String,
+    symbol: Vec<String>,
 }
 
 fn get_file(name: Option<String>) -> Result<Box<dyn Write>, io::Error> {
@@ -52,8 +55,11 @@ async fn main() -> Result<(), Box<dyn Error>> {
     let mut out = get_file(args.output)?;
     match args.command {
         Commands::Quote(args) => {
-            let quote = av.quote(&args.symbol).await?;
-            write!(out, "{quote}")?;
+            for ticker in &args.symbol {
+                debug!("Getting quote for symbol: {ticker}");
+                let quote = av.quote(ticker).await?;
+                writeln!(out, "{quote}")?;
+            }
             Ok(())
         }
     }
