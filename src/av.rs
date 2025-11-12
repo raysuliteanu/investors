@@ -5,21 +5,28 @@ use reqwest::Client;
 pub struct AV {
     client: Client,
     api_url: String,
+    csv: bool,
 }
 
 impl AV {
     const BASE_URL: &'static str = "https://www.alphavantage.co/query?";
 
-    pub fn new(api_key: String) -> Self {
+    pub fn new(api_key: String, csv: bool) -> Self {
         let client = Client::new();
         AV {
             client,
             api_url: format!("{}apikey={}&", Self::BASE_URL, api_key),
+            csv,
         }
     }
 
     pub async fn quote(&self, symbol: &str) -> Result<String, Error> {
-        let params = [("function", "GLOBAL_QUOTE"), ("symbol", symbol)];
+        let format = if self.csv { "csv" } else { "json" };
+        let params = [
+            ("function", "GLOBAL_QUOTE"),
+            ("symbol", symbol),
+            ("datatype", format),
+        ];
         self.client
             .get(self.api_url.as_str())
             .query(&params)
@@ -38,7 +45,7 @@ mod tests {
     #[tokio::test]
     async fn test_quote() {
         let key = std::env::var("ALPHAVANTAGE_API_KEY").expect("ALPHAVANTAGE_API_KEY not set");
-        let av = AV::new(key);
+        let av = AV::new(key, false);
         let result = av.quote("IBM").await;
         assert!(result.is_ok());
         println!("Quote data: {}", result.unwrap());
