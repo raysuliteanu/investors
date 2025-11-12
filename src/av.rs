@@ -1,6 +1,6 @@
 use anyhow::{Context, Error};
 
-use reqwest::blocking::Client;
+use reqwest::Client;
 
 pub struct AV {
     client: Client,
@@ -18,13 +18,15 @@ impl AV {
         }
     }
 
-    pub fn quote(&self, symbol: &str) -> Result<String, Error> {
+    pub async fn quote(&self, symbol: &str) -> Result<String, Error> {
         let params = [("function", "GLOBAL_QUOTE"), ("symbol", symbol)];
         self.client
             .get(self.api_url.as_str())
             .query(&params)
-            .send()?
+            .send()
+            .await?
             .text()
+            .await
             .with_context(|| format!("Failed to get quote data for {}", symbol))
     }
 }
@@ -33,11 +35,11 @@ impl AV {
 mod tests {
     use super::*;
 
-    #[test]
-    fn test_quote() {
+    #[tokio::test]
+    async fn test_quote() {
         let key = std::env::var("ALPHAVANTAGE_API_KEY").expect("ALPHAVANTAGE_API_KEY not set");
         let av = AV::new(key);
-        let result = av.quote("IBM");
+        let result = av.quote("IBM").await;
         assert!(result.is_ok());
         println!("Quote data: {}", result.unwrap());
     }
