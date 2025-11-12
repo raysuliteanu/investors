@@ -29,10 +29,22 @@ struct Cli {
 enum Commands {
     /// get a stock quote
     Quote(QuoteArgs),
+    /// get historical daily stock quote data
+    Daily(DailyQuoteArgs),
 }
 
 #[derive(Debug, Args, Default)]
 struct QuoteArgs {
+    /// stock ticker symbol
+    #[arg(name = "symbol")]
+    symbol: Vec<String>,
+}
+
+#[derive(Debug, Args, Default)]
+struct DailyQuoteArgs {
+    /// if set, retrieve all data points; default is compact (latest 100 data points)
+    #[arg(long)]
+    full: bool,
     /// stock ticker symbol
     #[arg(name = "symbol")]
     symbol: Vec<String>,
@@ -56,8 +68,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
         .key
         .unwrap_or_else(|| std::env::var("ALPHAVANTAGE_API_KEY").unwrap());
 
-    let as_csv = args.csv;
-    let av = Arc::new(AV::new(key, as_csv));
+    let av = Arc::new(AV::new(key, args.csv));
     let mut out = get_file(args.output)?;
     match args.command {
         Commands::Quote(args) => {
@@ -69,6 +80,34 @@ async fn main() -> Result<(), Box<dyn Error>> {
                 tasks.spawn(async move {
                     debug!("Getting quote for symbol: {ticker}");
                     (ticker.clone(), av.quote(&ticker).await)
+                });
+            }
+
+            while let Some(result) = tasks.join_next().await {
+                match result {
+                    Ok((_ticker, Ok(quote))) => {
+                        writeln!(out, "{quote}")?;
+                    }
+                    Ok((ticker, Err(e))) => {
+                        eprintln!("Error getting quote for {}: {}", ticker, e);
+                    }
+                    Err(e) => {
+                        eprintln!("Task join error: {}", e);
+                    }
+                }
+            }
+
+            Ok(())
+        }
+        Commands::Daily(args) => {
+            let mut tasks = JoinSet::new();
+
+            for ticker in &args.symbol {
+                let ticker = ticker.clone();
+                let av = Arc::clone(&av);
+                tasks.spawn(async move {
+                    debug!("Getting quote for symbol: {ticker}");
+                    (ticker.clone(), av.daily(&ticker, args.full).await)
                 });
             }
 
