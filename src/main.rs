@@ -8,6 +8,7 @@ use std::{
 use clap::{Args, Parser, Subcommand};
 use investors::av::AV;
 use log::debug;
+use polars::prelude::*;
 use tokio::task::JoinSet;
 
 #[derive(Debug, Parser)]
@@ -31,6 +32,18 @@ enum Commands {
     Quote(QuoteArgs),
     /// get historical daily stock quote data
     Daily(DailyQuoteArgs),
+    ///
+    Load(LoadArgs),
+}
+
+#[derive(Debug, Args, Default)]
+struct LoadArgs {
+    /// input csv file name
+    #[arg(short, long)]
+    input: String,
+    /// output parquet file name
+    #[arg(short, long)]
+    output: String,
 }
 
 #[derive(Debug, Args, Default)]
@@ -71,6 +84,21 @@ async fn main() -> Result<(), Box<dyn Error>> {
     let av = Arc::new(AV::new(key, args.csv));
     let mut out = get_file(args.output)?;
     match args.command {
+        Commands::Load(args) => {
+            tokio::task::spawn_blocking(move || -> Result<(), PolarsError> {
+                let input = PlPath::from_str(&args.input);
+                let output = PlPath::from_str(&args.output);
+                let target = SinkTarget::Path(output);
+                let sink_options = SinkOptions::default();
+                let write_options = ParquetWriteOptions::default();
+                let csv = LazyCsvReader::new(input).with_has_header(true).finish()?;
+                let lf = csv.sink_parquet(target, write_options, None, sink_options)?;
+                let _ = lf.collect()?;
+                Ok(())
+            })
+            .await
+            .map_err(|e| Box::new(e) as Box<dyn Error>)??;
+        }
         Commands::Quote(args) => {
             let mut tasks = JoinSet::new();
 
@@ -96,8 +124,6 @@ async fn main() -> Result<(), Box<dyn Error>> {
                     }
                 }
             }
-
-            Ok(())
         }
         Commands::Daily(args) => {
             let mut tasks = JoinSet::new();
@@ -124,8 +150,8 @@ async fn main() -> Result<(), Box<dyn Error>> {
                     }
                 }
             }
-
-            Ok(())
         }
     }
+
+    Ok(())
 }

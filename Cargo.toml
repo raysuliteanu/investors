@@ -8,7 +8,16 @@ anyhow = "1.0.100"
 clap = { version = "4.5.51", features = ["derive"] }
 config = "0.15.18"
 log = "0.4.28"
-polars = "0.52.0"
+polars = { version = "0.52.0", features = [
+    "zip_with",
+    "csv",
+    "polars-parquet",
+    "fmt",
+    "lazy",
+    "dtype-slim",
+    "timezones",
+    "parquet",
+] }
 reqwest = { version = "0.12.24", features = ["json"] }
 serde = { version = "1.0.228", features = ["derive"] }
 thiserror = "2.0.17"
