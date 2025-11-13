@@ -83,8 +83,9 @@ pub async fn do_load(args: LoadArgs) -> Result<(), Box<dyn Error>> {
     Ok(())
 }
 
-pub async fn do_quote(args: QuoteArgs, av: Arc<AV>) -> Result<(), Box<dyn Error>> {
+pub async fn do_quote(args: QuoteArgs, key: String, csv: bool) -> Result<(), Box<dyn Error>> {
     let mut out = get_file(args.output)?;
+    let av = Arc::new(AV::new(key, csv));
     let mut tasks = JoinSet::new();
 
     for ticker in &args.symbol {
@@ -113,8 +114,13 @@ pub async fn do_quote(args: QuoteArgs, av: Arc<AV>) -> Result<(), Box<dyn Error>
     Ok(())
 }
 
-pub async fn do_daily_quote(args: DailyQuoteArgs, av: Arc<AV>) -> Result<(), Box<dyn Error>> {
+pub async fn do_daily_quote(
+    args: DailyQuoteArgs,
+    key: String,
+    csv: bool,
+) -> Result<(), Box<dyn Error>> {
     let mut out = get_file(args.output)?;
+    let av = Arc::new(AV::new(key, csv));
     let mut tasks = JoinSet::new();
 
     for ticker in &args.symbol {

@@ -1,10 +1,7 @@
-use std::{error::Error, sync::Arc};
+use std::error::Error;
 
 use clap::Parser;
-use investors::{
-    av::AV,
-    cli::{Cli, Commands},
-};
+use investors::cli::{Cli, Commands};
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn Error>> {
@@ -14,16 +11,16 @@ async fn main() -> Result<(), Box<dyn Error>> {
         .key
         .unwrap_or_else(|| std::env::var("ALPHAVANTAGE_API_KEY").unwrap());
 
-    let av = Arc::new(AV::new(key, args.csv));
+    let csv = args.csv;
     match args.command {
         Commands::Load(args) => {
             investors::cli::do_load(args).await?;
         }
         Commands::Quote(args) => {
-            investors::cli::do_quote(args, av).await?;
+            investors::cli::do_quote(args, key, csv).await?;
         }
         Commands::Daily(args) => {
-            investors::cli::do_daily_quote(args, av).await?;
+            investors::cli::do_daily_quote(args, key, csv).await?;
         }
     }
 
