@@ -1,0 +1,34 @@
+#!/usr/bin/env bash
+
+# Check if filename argument provided
+if [ $# -ne 1 ]; then
+    echo "Usage: is_parquet <filename>"
+    exit 1
+fi
+
+file="$1"
+
+# Check if file exists and is readable
+if [ ! -f "$file" ] || [ ! -r "$file" ]; then
+    echo "false"
+    exit 1
+fi
+
+# Check if file is at least 8 bytes (needs PAR1 at start and end)
+size=$(stat -c%s "$file" 2>/dev/null)
+if [ -z "$size" ] || [ "$size" -lt 8 ]; then
+    echo "false"
+    exit 1
+fi
+
+# Check magic numbers at start and end
+first=$(head -c 4 "$file" 2>/dev/null)
+last=$(tail -c 4 "$file" 2>/dev/null)
+
+if [ "$first" = "PAR1" ] && [ "$last" = "PAR1" ]; then
+    echo "true"
+    exit 0
+else
+    echo "false"
+    exit 1
+fi
