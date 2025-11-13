@@ -32,7 +32,7 @@ enum Commands {
     Quote(QuoteArgs),
     /// get historical daily stock quote data
     Daily(DailyQuoteArgs),
-    ///
+    /// Read (load) a CSV file and write it out as a Parquet file
     Load(LoadArgs),
 }
 
