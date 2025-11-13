@@ -4,3 +4,4 @@
 *.dat
 *.json
 CLAUDE.md
+.claude/
