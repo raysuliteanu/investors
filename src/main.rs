@@ -16,9 +16,6 @@ struct Cli {
     /// specify API key; if missing, taken from the environment variable ALPHAVANTAGE_API_KEY
     #[arg(short, long)]
     key: Option<String>,
-    /// write the output to a file instead of stdout
-    #[arg(short, long)]
-    output: Option<String>,
     /// output in csv (default is json)
     #[arg(long)]
     csv: bool,
@@ -48,18 +45,24 @@ struct LoadArgs {
 
 #[derive(Debug, Args, Default)]
 struct QuoteArgs {
+    /// write the output to a file instead of stdout
+    #[arg(short, long)]
+    output: Option<String>,
     /// stock ticker symbol
-    #[arg(name = "symbol")]
+    #[arg(required = true)]
     symbol: Vec<String>,
 }
 
 #[derive(Debug, Args, Default)]
 struct DailyQuoteArgs {
+    /// write the output to a file instead of stdout
+    #[arg(short, long)]
+    output: Option<String>,
     /// if set, retrieve all data points; default is compact (latest 100 data points)
     #[arg(long)]
     full: bool,
     /// stock ticker symbol
-    #[arg(name = "symbol")]
+    #[arg(required = true)]
     symbol: Vec<String>,
 }
 
@@ -82,7 +85,6 @@ async fn main() -> Result<(), Box<dyn Error>> {
         .unwrap_or_else(|| std::env::var("ALPHAVANTAGE_API_KEY").unwrap());
 
     let av = Arc::new(AV::new(key, args.csv));
-    let mut out = get_file(args.output)?;
     match args.command {
         Commands::Load(args) => {
             tokio::task::spawn_blocking(move || -> Result<(), PolarsError> {
@@ -100,6 +102,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
             .map_err(|e| Box::new(e) as Box<dyn Error>)??;
         }
         Commands::Quote(args) => {
+            let mut out = get_file(args.output)?;
             let mut tasks = JoinSet::new();
 
             for ticker in &args.symbol {
@@ -126,6 +129,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
             }
         }
         Commands::Daily(args) => {
+            let mut out = get_file(args.output)?;
             let mut tasks = JoinSet::new();
 
             for ticker in &args.symbol {
